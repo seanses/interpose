@@ -2,3 +2,5 @@
 examples/logger/logger.so
 examples/logger/logger.dylib
 examples/logger/testprog
+.vscode
+*.dylib.*

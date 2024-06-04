@@ -21,7 +21,7 @@ clean:
 	@rm -f logger.$(SHLIB_SUFFIX) logger_c.$(SHLIB_SUFFIX) testprog
 
 logger.$(SHLIB_SUFFIX): logger.cc ../../include/interpose.hh
-	$(CXXLIB) -I../../include --std=c++11 -o $@ $< -ldl
+	$(CXXLIB) -I../../include --std=c++17 -o $@ $< -ldl
 
 logger_c.$(SHLIB_SUFFIX): logger.c ../../include/interpose.h
 	$(CCLIB) -I../../include --std=c99 -o $@ $< -ldl

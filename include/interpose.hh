@@ -24,8 +24,8 @@ template<typename R, typename... Args> struct fn_info<R(Args...)> {
 };
 
 /// Starting with C++17, some library implementations of malloc are marked noexcept.
-template<typename R, typename... Args>
-struct fn_info<R(Args...) noexcept> : fn_info<R(Args...)> {};
+// template<typename R, typename... Args>
+// struct fn_info<R(Args...) noexcept> : fn_info<R(Args...)> {};
 
 #if defined(__ELF__)
 
@@ -84,6 +84,20 @@ struct __osx_interpose {
   OSX_INTERPOSE_STRUCT(__interpose_##NAME, NAME); \
   extern "C" fn_info<decltype(::NAME)>::ret_type __interpose_##NAME
 
+#define INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, ...) \
+  static RETURN_TYPE Real__##NAME ARG_TYPE_AND_NAME_LIST { \
+    __VA_ARGS__; \
+  } \
+  extern RETURN_TYPE __interpose_##NAME ARG_TYPE_AND_NAME_LIST; \
+  OSX_INTERPOSE_STRUCT(__interpose_##NAME, NAME); \
+  extern RETURN_TYPE __interpose_##NAME ARG_TYPE_AND_NAME_LIST
+
+#define INTERPOSE_C(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, ARG_NAME_LIST) \
+  INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, return NAME ARG_NAME_LIST)
+  
+#define INTERPOSE_C_LAMBDA(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, CALL_OLD_FUNC) \
+  INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, CALL_OLD_FUNC)
+  
 #endif
 
 #endif
