@@ -12,14 +12,14 @@ int main(int argc, char **argv)
   printf("p is %p\n", p);
   free(p);
 
-  FILE *fp = fopen("/Users/di/tt/bsf13/.gitattributes", "r");
+  FILE *fp = fopen("hello.txt", "r");
   char buf[100];
   size_t nbytes = fread(buf, 1, 100, fp);
   printf("read %zu bytes\n", nbytes);
   printf("%s\n", buf);
   fclose(fp);
 
-  int fd = open("/Users/di/tt/bsf13/.gitattributes", O_RDONLY, DEFFILEMODE);
+  int fd = open("hello.txt", O_RDONLY, DEFFILEMODE);
   size_t nbyte = read(fd, buf, 100);
   printf("read %zu bytes\n", nbytes);
   printf("%s\n", buf);

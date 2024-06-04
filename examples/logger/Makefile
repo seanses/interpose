@@ -27,7 +27,7 @@ logger_c.$(SHLIB_SUFFIX): logger.c ../../include/interpose.h
 	$(CCLIB) -I../../include --std=c99 -o $@ $< -ldl
 
 testprog: testprog.cc
-	$(CXX) --std=c++11 -o $@ $<
+	$(CXX) --std=c++17 -o $@ $<
 
 test: testprog logger.$(SHLIB_SUFFIX)
 	$(PRELOAD_VAR)=./logger.$(SHLIB_SUFFIX) ./testprog

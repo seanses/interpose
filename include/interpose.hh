@@ -52,6 +52,26 @@ template<typename R, typename... Args> struct fn_info<R(Args...)> {
   } \
   extern "C" decltype(::NAME) NAME __attribute__((weak, alias("__interpose_" #NAME))); \
   extern "C" fn_info<decltype(::NAME)>::ret_type __interpose_##NAME
+
+#define INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, ...) \
+  static RETURN_TYPE Real__##NAME ARG_TYPE_AND_NAME_LIST { \
+    static __typeof__(NAME)* real_##NAME; \
+    __typeof__(NAME)* func = __atomic_load_n(&real_##NAME, __ATOMIC_CONSUME); \
+    if(!func) { \
+      func = (__typeof__(NAME)*)( \
+        (uintptr_t)(dlsym(RTLD_NEXT, #NAME))); \
+      __atomic_store_n(&real_##NAME, func, __ATOMIC_RELEASE); \
+    } \
+    __VA_ARGS__; \
+  } \
+  extern "C" __typeof__(NAME) NAME __attribute__((weak, alias("__interpose_" #NAME))); \
+  extern "C" RETURN_TYPE __interpose_##NAME ARG_TYPE_AND_NAME_LIST
+
+#define INTERPOSE_C(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, ARG_NAME_LIST) \
+  INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, return func ARG_NAME_LIST)
+
+#define INTERPOSE_C_LAMBDA(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, CALL_OLD_FUNC) \
+  INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, CALL_OLD_FUNC)
           
 #elif defined(__APPLE__)
 
@@ -88,16 +108,16 @@ struct __osx_interpose {
   static RETURN_TYPE Real__##NAME ARG_TYPE_AND_NAME_LIST { \
     __VA_ARGS__; \
   } \
-  extern RETURN_TYPE __interpose_##NAME ARG_TYPE_AND_NAME_LIST; \
+  extern "C" RETURN_TYPE __interpose_##NAME ARG_TYPE_AND_NAME_LIST; \
   OSX_INTERPOSE_STRUCT(__interpose_##NAME, NAME); \
-  extern RETURN_TYPE __interpose_##NAME ARG_TYPE_AND_NAME_LIST
+  extern "C" RETURN_TYPE __interpose_##NAME ARG_TYPE_AND_NAME_LIST
 
 #define INTERPOSE_C(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, ARG_NAME_LIST) \
   INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, return NAME ARG_NAME_LIST)
   
 #define INTERPOSE_C_LAMBDA(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, CALL_OLD_FUNC) \
   INTERPOSE__C_GENERIC__(RETURN_TYPE, NAME, ARG_TYPE_AND_NAME_LIST, CALL_OLD_FUNC)
-  
+
 #endif
 
 #endif

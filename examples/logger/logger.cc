@@ -6,11 +6,13 @@
 
 #include <interpose.hh>
 
-#if defined(__APPLE__)
-#include <malloc/malloc.h>
+#include <stdarg.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+
+#if defined(__APPLE__)
+#include <malloc/malloc.h>
 #define malloc_usable_size malloc_size
 #elif defined(__linux__)
 #include <malloc.h>
@@ -22,6 +24,7 @@
 size_t allocated_bytes = 0;
 size_t freed_bytes = 0;
 
+#if defined(__APPLE__)
 INTERPOSE(malloc)
 (size_t sz)
 {
@@ -87,22 +90,37 @@ INTERPOSE(exit)
 
   real::exit(status);
 }
+#endif
 
 int internal_open(const char *path, int oflag, mode_t mode);
 
-// INTERPOSE_C(int, open, (const char *path, int oflag, mode_t mode), (path, oflag, mode))
-// {
-//   return internal_open(path, oflag, mode);
-// }
-
+#if defined(__APPLE__)
 INTERPOSE_C_LAMBDA(int, open, (const char *path, int oflag, ...), {va_list args; va_start(args, oflag); mode_t mode = va_arg(args, int); va_end(args); return open(path, oflag, mode); })
 {
+  fprintf(stderr, "interpose lambda open\n");
   va_list args;
   va_start(args, oflag);
   mode_t mode = va_arg(args, int);
   va_end(args);
   return internal_open(path, oflag, mode);
 }
+#elif defined(__linux__)
+// INTERPOSE(open)(const char *path, int oflag) {
+//   return internal_open(path, oflag, DEFFILEMODE);
+// }
+// INTERPOSE(open)(const char *path, int oflag, mode_t mode) {
+//   return internal_open(path, oflag, mode);
+// }
+// INTERPOSE_C(int, open, (const char *path, int oflag), (path, oflag))
+// {
+//   return internal_open(path, oflag, DEFFILEMODE);
+// }
+INTERPOSE_C(int, open, (const char *path, int oflag, mode_t mode), (path, oflag, mode))
+{
+  fprintf(stderr, "interpose open\n");
+  return internal_open(path, oflag, mode);
+}
+#endif
 
 struct fd_desc
 {
@@ -119,7 +137,7 @@ int internal_open(const char *path, int oflag, mode_t mode)
   fprintf(stderr, "internal open %s\n", path);
   int fd = Real__open(path, oflag, mode);
 
-  if (strcmp(path, "/Users/di/tt/bsf13/.gitattributes") == 0)
+  if (strcmp(path, "hello.txt") == 0)
   {
     xetfds[xfidx] = (struct fd_desc){
         fd, 1000, 0};
@@ -140,19 +158,19 @@ int __sflags(const char *mode, int *optr)
   {
 
   case 'r': /* open for reading */
-    ret = __SRD;
+    // ret = __SRD;
     m = O_RDONLY;
     o = 0;
     break;
 
   case 'w': /* open for writing */
-    ret = __SWR;
+    // ret = __SWR;
     m = O_WRONLY;
     o = O_CREAT | O_TRUNC;
     break;
 
   case 'a': /* open for appending */
-    ret = __SWR;
+    // ret = __SWR;
     m = O_WRONLY;
     o = O_CREAT | O_APPEND;
     break;
@@ -167,7 +185,7 @@ int __sflags(const char *mode, int *optr)
     mode++;
   if (*mode == '+')
   {
-    ret = __SRW;
+    // ret = __SRW;
     m = O_RDWR;
     mode++;
     if (*mode == 'b')
@@ -229,7 +247,11 @@ INTERPOSE(fread)
   fprintf(stderr, "interpose fread\n");
   for (int i = 0; i < xfidx; i++)
   {
+#if defined(__APPLE__)
     if (xetfds[i].fd == __stream->_file)
+#elif defined(__linux__)
+    if (xetfds[i].fd == __stream->_fileno)
+#endif
     {
       return internal_fread(__ptr, __size, __nitems, __stream);
     }
